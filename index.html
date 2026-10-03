@@ -880,6 +880,23 @@ button { font: inherit; color: inherit; }
 .team-intro { grid-template-columns: repeat(4, 1fr); }
 .ti-card { padding: 20px 14px; }
 @media (max-width: 860px) { .team-intro { grid-template-columns: repeat(2, 1fr); } }
+
+/* Plein écran */
+.top-right { display: flex; align-items: center; gap: 10px; }
+.fs-btn { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px 7px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--ink); color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: transform .2s var(--ease), background .2s; }
+.fs-btn svg { width: 17px; height: 17px; }
+.fs-btn:hover { transform: translateY(-1px); background: #1f1f1f; }
+.fs-btn[aria-pressed="true"] { background: #fff; color: var(--ink); }
+:fullscreen body, :-webkit-full-screen body { overflow-y: auto; }
+html:fullscreen { overflow-y: auto; background: var(--desk); }
+@media (max-width: 860px) { .fs-btn span { display: none; } .fs-btn { padding: 8px; } }
+@media print { .fs-btn { display: none !important; } }
+@media (max-width: 860px) {
+  .top-right { gap: 6px; }
+  .scen-chip.empty { display: none; }
+  .scen-chip { font-size: 12px; padding: 4px 10px 4px 4px; }
+  .brand-txt strong { font-size: 16px; }
+}
 </style>
 </head>
 <body>
@@ -2075,7 +2092,7 @@ window.SIM = {
       '<header class="topbar" role="banner">' +
         '<a class="brand" ' + linkAttr('intro') + ' aria-label="LIANE — Bureau de projet, retour au briefing"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><span class="brand-txt"><small>IFAP · LIANE</small><strong>Bureau de projet</strong></span></a>' +
         '<div class="timebar" id="timebar"></div>' +
-        '<div id="scen-chip"></div>' +
+        '<div class="top-right"><div id="scen-chip"></div>' + fsButton() + '</div>' +
       '</header>' +
       '<div class="layout' + (wide ? ' wide' : '') + '">' +
         '<nav class="rail" aria-label="Phases du projet" id="rail"></nav>' +
@@ -2086,6 +2103,7 @@ window.SIM = {
       '<footer class="site-foot" role="contentinfo">IFAP · LIANE — ' + C.meta.title + ' · CC BY-NC-SA 4.0</footer>' +
       '<div id="sim-live" class="sr-only" aria-live="polite"></div>';
     $('.brand').addEventListener('click', navHandler);
+    wireFS();
     renderRail(); renderTimebar(); renderChip();
     if (!wide) renderDash();
   }
@@ -2240,6 +2258,30 @@ window.SIM = {
     return h;
   }
   function allApplied(r) { var a = (r.applied || []).slice(); r.st.events.forEach(function (e) { a = a.concat(e.applied); }); return a; }
+
+
+  /* ------------------------------------------------------------------ */
+  /* PLEIN ÉCRAN (bouton systématique)                                   */
+  /* ------------------------------------------------------------------ */
+  var FS_IN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var FS_OUT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  function fsElement() { return document.fullscreenElement || document.webkitFullscreenElement || null; }
+  function fsAvailable() { var d = document.documentElement; return !!(d.requestFullscreen || d.webkitRequestFullscreen) && (document.fullscreenEnabled !== false || document.webkitFullscreenEnabled); }
+  function fsButton() {
+    var on = !!fsElement();
+    return '<button class="fs-btn" id="fs-btn" type="button" aria-pressed="' + on + '" title="' + (on ? 'Quitter le plein écran (Échap)' : 'Afficher en plein écran') + '">' + (on ? FS_OUT : FS_IN) + '<span>' + (on ? 'Quitter' : 'Plein écran') + '</span></button>';
+  }
+  function refreshFS() { var b = $('#fs-btn'); if (b) b.outerHTML = fsButton(); wireFS(); }
+  function toggleFS() {
+    var d = document.documentElement;
+    if (fsElement()) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+    if (!fsAvailable()) { toast('⛶', '#7c6eaf', 'Plein écran indisponible ici', 'Utilisez F11, ou ouvrez le module dans une nouvelle fenêtre.'); return; }
+    var p = (d.requestFullscreen || d.webkitRequestFullscreen).call(d);
+    if (p && p.catch) p.catch(function () { toast('⛶', '#7c6eaf', 'Plein écran refusé par le navigateur', 'Utilisez F11 pour passer en plein écran.'); });
+  }
+  function wireFS() { var b = $('#fs-btn'); if (b && !b._w) { b._w = 1; b.addEventListener('click', toggleFS); } }
+  document.addEventListener('fullscreenchange', refreshFS);
+  document.addEventListener('webkitfullscreenchange', refreshFS);
 
   /* ------------------------------------------------------------------ */
   /* ROUTAGE                                                             */
@@ -2987,7 +3029,7 @@ window.SIM = {
   }
   function renderFichePage(key) {
     var app = $('#app');
-    app.innerHTML = '<main><div class="doc-tools no-print"><button class="btn btn-soft" onclick="window.close()">← Fermer</button><button class="btn btn-teal" onclick="window.print()">Imprimer / Enregistrer en PDF</button></div>' + sheetHTML(key) + '</main>';
+    app.innerHTML = '<main><div class="doc-tools no-print"><button class="btn btn-soft" onclick="window.close()">← Fermer</button>' + fsButton() + '<button class="btn btn-teal" onclick="window.print()">Imprimer / Enregistrer en PDF</button></div>' + sheetHTML(key) + '</main>'; wireFS();
   }
   function renderCredits() {
     var stage = $('#stage'), now = new Date();
